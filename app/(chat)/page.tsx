@@ -4,6 +4,7 @@ import { Chat } from '@/components/chat';
 import { DEFAULT_MODEL_NAME, models } from '@/lib/ai/models';
 import { generateUUID } from '@/lib/utils';
 import { DataStreamHandler } from '@/components/data-stream-handler';
+import { processImages } from './actions';
 
 export default async function Page() {
   const id = generateUUID();
@@ -21,6 +22,7 @@ export default async function Page() {
         key={id}
         id={id}
         initialMessages={[]}
+        analyzeImages={processImages}
         selectedModelId={selectedModelId}
         selectedVisibilityType="private"
         isReadonly={false}

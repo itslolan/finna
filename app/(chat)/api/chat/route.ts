@@ -31,7 +31,7 @@ import {
   sanitizeResponseMessages,
 } from '@/lib/utils';
 
-import { generateTitleFromUserMessage } from '../../actions';
+import { generateTitleFromUserMessage, processImages } from '../../actions';
 
 export const maxDuration = 60;
 
@@ -52,12 +52,21 @@ const weatherTools: AllowedTools[] = ['getWeather'];
 const allTools: AllowedTools[] = [...blocksTools, ...weatherTools];
 
 export async function POST(request: Request) {
+  const payload = await request.json();
   const {
     id,
     messages,
     modelId,
   }: { id: string; messages: Array<Message>; modelId: string } =
-    await request.json();
+    payload;
+
+  const attachments = payload.messages
+    .reverse()
+    .find((message: any) => message.experimental_attachments)?.experimental_attachments
+    .map((message: any) => message?.url);
+
+  console.log(attachments);
+  await processImages(attachments)
 
   const session = await auth();
 
@@ -86,6 +95,8 @@ export async function POST(request: Request) {
   }
 
   const userMessageId = generateUUID();
+
+  //processImages
 
   await saveMessages({
     messages: [

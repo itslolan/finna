@@ -21,14 +21,17 @@ export function Chat({
   selectedModelId,
   selectedVisibilityType,
   isReadonly,
+  analyzeImages,
 }: {
   id: string;
   initialMessages: Array<Message>;
   selectedModelId: string;
+  analyzeImages: any;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
 }) {
   const { mutate } = useSWRConfig();
+  console.log(analyzeImages)
 
   const {
     messages,
@@ -57,6 +60,8 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isBlockVisible = useBlockSelector((state) => state.isVisible);
+
+  console.log(">>>", attachments)
 
   return (
     <>
