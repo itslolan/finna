@@ -3,12 +3,7 @@
 import { type CoreUserMessage, generateText } from 'ai';
 import { cookies } from 'next/headers';
 import OpenAI from "openai";
-// import { Configuration, OpenAIApi } from "openai";
-
-// const configuration = new Configuration({
-//   apiKey: process.env.OPENAI_API_KEY, // Ensure your API key is stored in an environment variable
-// });
-// const openai = new OpenAIApi(configuration);
+import { createWorker } from 'tesseract.js';
 
 import { customModel } from '@/lib/ai';
 import {
@@ -22,6 +17,22 @@ export async function saveModelId(model: string) {
   const cookieStore = await cookies();
   cookieStore.set('model-id', model);
 }
+
+const tesseractRecognize = async (imagePath: string) => {
+  const worker = await createWorker('eng');
+
+  try {
+    const {
+      data: { text },
+    } = await worker.recognize(imagePath);
+    return text;
+  } catch (error) {
+    console.error(error);
+    return null;
+  } finally {
+    await worker.terminate();
+  }
+};
 
 export async function generateTitleFromUserMessage({
   message,
@@ -60,22 +71,18 @@ export async function updateChatVisibility({
   await updateChatVisiblityById({ chatId, visibility });
 }
 
-export async function processImages(imagePaths: any, originalFilenames = [], transactionCounts = []) {
+export async function processImages(imagePaths: any) {
   console.log('Starting to process images...');
 
-  const imageMessages = imagePaths.map((imagePath: string) => {
-    console.log(`Processing image: ${imagePath}`);
-    // const imageBuffer = fs.readFileSync(imagePath);
-    // const base64Image = imageBuffer.toString('base64');
+  const imageMessages = imagePaths?.map((imagePath: string) => ({
+    type: "image_url",
+    image_url: {
+      url: imagePath,
+      detail: "high"
+    }
+  })) || [];
 
-    return {
-      type: "image_url",
-      image_url: {
-        url: imagePath,
-        detail: "high"
-      }
-    };
-  });
+  const tesseractTexts = await Promise.all(imagePaths?.map(async (imagePath: string) => tesseractRecognize(imagePath)) || []);
 
   const prompt = `
 I want your help with organizing my finances. I am sharing screenshots of my credit card transactions from the RBC mobile app. To make sure you don’t miss any transactions, I’ve made sure every screenshot includes one transaction from the previous screenshot, to help you capture all transactions reliably and skipping duplicates which may be occuring in multiple screenshots. Do not let these duplicates into our calculations. I’m attaching these screenshots for you. Give me the transactions in it in JSON format.
@@ -83,17 +90,10 @@ The JSON should have these columns -
 * date (yyyy/MM/dd)
 * description
 * amount
+
+Here's what the Tesseract OCR software recognized from the screenshot. Use it to improve your accuracy -
+${tesseractTexts.join("\n")}
 `;
-// * filename
-
-// Filename is meant to help me understand which file contained which transactions. For the image files I'm sharing with you, these are their filenames (in order) - ${originalFilenames.join(",")}
-
-// Here's a rough estimate of the amount of transactions you can expect for each date. Note that this is only an indication and not 100% accurate -
-// | Date | Number of Transactions |
-// |------|------------------------|
-// ${Object.entries(transactionCounts).map(([date, count]) => `| ${date} | ${count} |`).join('\n')}
-// `;
- 
   try {
     const client = new OpenAI();
     const response = await client.chat.completions.create({
@@ -114,8 +114,7 @@ The JSON should have these columns -
     });
 
     console.log('Received response from OpenAI API');
-    // return JSON.parse(
-    console.log(response.choices[0].message.content);
+    return JSON.parse(response.choices[0].message?.content as any);
   } catch (error) {
     console.error(`Error processing image:`, error);
   }

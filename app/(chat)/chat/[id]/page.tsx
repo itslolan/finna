@@ -39,8 +39,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const selectedModelId =
     models.find((model) => model.id === modelIdFromCookie)?.id ||
     DEFAULT_MODEL_NAME;
-  console.log(processImages)
-  return (
+
+    return (
     <>
       <Chat
         id={chat.id}
